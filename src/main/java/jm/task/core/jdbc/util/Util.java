@@ -1,5 +1,11 @@
 package jm.task.core.jdbc.util;
 
+import jm.task.core.jdbc.model.User;
+import org.hibernate.SessionFactory;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.service.ServiceRegistry;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
@@ -12,28 +18,45 @@ import java.util.Properties;
 
 public class Util {
     private static Connection conn = null;
-    private static Util instance = null;
+    private  static SessionFactory factory = null;
 
-    private Util() {
+    public Util() {
+    }
+
+    public static SessionFactory getConnectionHibernate() {
+        try {
+            Configuration configuration = new Configuration()
+                    .setProperty("hibernate.connection.driver_class", getProps().getProperty("db.driver"))
+                    .setProperty("hibernate.connection.url", getProps().getProperty("db.url"))
+                    .setProperty("hibernate.connection.username", getProps().getProperty("db.username"))
+                    .setProperty("hibernate.connection.password", getProps().getProperty("db.password"))
+                    .setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect")
+                    .addAnnotatedClass(User.class);
+            ServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder()
+                    .applySettings(configuration.getProperties()).build();
+            factory = configuration.buildSessionFactory(serviceRegistry);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+        return factory;
+    }
+
+    public static void FactoryClose() {
+        if (factory != null) {
+            factory.close();
+        }
+    }
+    public static Connection getConnectionJDBS() {
         try {
             if (null == conn || conn.isClosed()) {
                 Properties props = getProps();
                 conn = DriverManager
-                        .getConnection(props.getProperty("db.url"), props.getProperty("db.username"), props.getProperty("db.password"));
+                        .getConnection(props.getProperty("db.url"), props.getProperty("db.username"),
+                                props.getProperty("db.password"));
             }
         } catch (SQLException | IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public static Util getInstance() {
-        if (null == instance) {
-            instance = new Util();
-        }
-        return instance;
-    }
-
-    public Connection getConnection() {
         return conn;
     }
 
